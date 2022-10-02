@@ -9,6 +9,7 @@
 #import "FrameHostObject.h"
 #import <Foundation/Foundation.h>
 #import <jsi/jsi.h>
+#import <UIKit/UIImage.h>
 
 std::vector<jsi::PropNameID> FrameHostObject::getPropertyNames(jsi::Runtime& rt) {
   std::vector<jsi::PropNameID> result;
@@ -18,6 +19,7 @@ std::vector<jsi::PropNameID> FrameHostObject::getPropertyNames(jsi::Runtime& rt)
   result.push_back(jsi::PropNameID::forUtf8(rt, std::string("height")));
   result.push_back(jsi::PropNameID::forUtf8(rt, std::string("bytesPerRow")));
   result.push_back(jsi::PropNameID::forUtf8(rt, std::string("planesCount")));
+  result.push_back(jsi::PropNameID::forUtf8(rt, std::string("rotationDegrees")));
   result.push_back(jsi::PropNameID::forUtf8(rt, std::string("close")));
   return result;
 }
@@ -77,6 +79,28 @@ jsi::Value FrameHostObject::get(jsi::Runtime& runtime, const jsi::PropNameID& pr
     auto imageBuffer = CMSampleBufferGetImageBuffer(frame.buffer);
     auto planesCount = CVPixelBufferGetPlaneCount(imageBuffer);
     return jsi::Value((double) planesCount);
+  }
+  if (name == "rotationDegrees") {
+    this->assertIsFrameStrong(runtime, name);
+    double rotationDegrees = 0;
+    switch (frame.orientation) {
+    case UIImageOrientationUp:
+    case UIImageOrientationUpMirrored:
+      break;
+    case UIImageOrientationRight:
+    case UIImageOrientationRightMirrored:
+      rotationDegrees = 90;
+      break;
+    case UIImageOrientationDown:
+    case UIImageOrientationDownMirrored:
+      rotationDegrees = 180;
+      break;
+    case UIImageOrientationLeft:
+    case UIImageOrientationLeftMirrored:
+      rotationDegrees = 270;
+    }
+    
+    return jsi::Value(rotationDegrees);
   }
 
   return jsi::Value::undefined();
