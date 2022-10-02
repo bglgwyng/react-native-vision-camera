@@ -45,6 +45,12 @@ int JImageProxy::getBytesPerRow() const {
   return getBytesPerRowMethod(utilsClass, self());
 }
 
+int JImageProxy::getRotationDegrees() const {
+  auto utilsClass = getUtilsClass();
+  static const auto getRotationDegreesMethod = utilsClass->getStaticMethod<jint(JImageProxy::javaobject)>("getRotationDegrees");
+  return getRotationDegreesMethod(utilsClass, self());
+}
+
 void JImageProxy::close() {
   static const auto closeMethod = getClass()->getMethod<void()>("close");
   closeMethod(self());
