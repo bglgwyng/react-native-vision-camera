@@ -22,6 +22,10 @@ export interface Frame {
    * Returns the number of planes this frame contains.
    */
   planesCount: number;
+  /**
+   * Returns the rotation degrees.
+   */
+  rotationDegrees: number;
 
   /**
    * Returns a string representation of the frame.
