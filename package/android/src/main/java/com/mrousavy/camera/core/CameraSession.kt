@@ -301,6 +301,7 @@ class CameraSession(private val context: Context, private val cameraManager: Cam
         size.width,
         size.height,
         video.config.pixelFormat,
+        this.orientation,
         isSelfie,
         video.config.enableFrameProcessor
       )

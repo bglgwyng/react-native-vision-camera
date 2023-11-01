@@ -28,6 +28,7 @@ class VideoPipeline(
   val width: Int,
   val height: Int,
   val format: PixelFormat = PixelFormat.NATIVE,
+  private val orientation: Orientation,
   private val isMirrored: Boolean = false,
   enableFrameProcessor: Boolean = false
 ) : SurfaceTexture.OnFrameAvailableListener,
@@ -106,7 +107,7 @@ class VideoPipeline(
         val image = reader.acquireNextImage() ?: return@setOnImageAvailableListener
 
         // TODO: Get correct orientation and isMirrored
-        val frame = Frame(image, image.timestamp, Orientation.PORTRAIT, isMirrored)
+        val frame = Frame(image, image.timestamp, orientation, isMirrored)
         frame.incrementRefCount()
         frameProcessor?.call(frame)
 
