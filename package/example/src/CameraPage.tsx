@@ -1,11 +1,12 @@
 import * as React from 'react'
-import { useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useState, useCallback, useMemo, useReducer } from 'react'
 import { GestureResponderEvent, StyleSheet, Text, View } from 'react-native'
 import { PinchGestureHandler, PinchGestureHandlerGestureEvent, TapGestureHandler } from 'react-native-gesture-handler'
 import {
   CameraProps,
   CameraRuntimeError,
   PhotoFile,
+  runAsync,
   useCameraDevice,
   useCameraFormat,
   useFrameProcessor,
@@ -27,6 +28,7 @@ import { useIsFocused } from '@react-navigation/core'
 import { examplePlugin } from './frame-processors/ExamplePlugin'
 import { exampleKotlinSwiftPlugin } from './frame-processors/ExampleKotlinSwiftPlugin'
 import { usePreferredCameraDevice } from './hooks/usePreferredCameraDevice'
+import { Worklets } from 'react-native-worklets-core'
 
 const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera)
 Reanimated.addWhitelistedNativeProps({
@@ -171,13 +173,28 @@ export function CameraPage({ navigation }: Props): React.ReactElement {
     console.log(`Camera: ${device?.name} | Format: ${f}`)
   }, [device?.name, format, fps])
 
-  const frameProcessor = useFrameProcessor((frame) => {
-    'worklet'
+  const [count, setCount] = useReducer((count) => count + 1, 0)
 
-    console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
-    examplePlugin(frame)
-    exampleKotlinSwiftPlugin(frame)
-  }, [])
+  const setCount$ = useMemo(() => Worklets.createRunInJsFn(setCount), [])
+  console.info(count)
+
+  const runAtTargetFps = useRunAtTargetFps()
+
+  const frameProcessor = useFrameProcessor(
+    (frame) => {
+      'worklet'
+
+      console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
+
+      setCount$()
+      runAtTargetFps(100, () => {
+        'worklet'
+        examplePlugin(frame)
+        exampleKotlinSwiftPlugin(frame)
+      })
+    },
+    [setCount$, runAtTargetFps],
+  )
 
   return (
     <View style={styles.container}>
@@ -294,3 +311,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 })
+
+function useRunAtTargetFps(): <T>(fps: number, func: () => T) => T | undefined {
+  // set the initial value to 0, so that the first call is always executed
+  const lastFrameProcessorCall = useMemo(() => Worklets.createSharedValue(0), [])
+
+  return (fps, func) => {
+    'worklet'
+    const targetIntervalMs = 1000 / fps // <-- 60 FPS => 16,6667ms interval
+    const now = performance.now()
+    const diffToLastCall = now - lastFrameProcessorCall.value
+    if (diffToLastCall >= targetIntervalMs) {
+      lastFrameProcessorCall.value = now
+      // Last Frame Processor call is already so long ago that we want to make a new call
+      return func()
+    }
+    return undefined
+  }
+}
